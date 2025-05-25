@@ -30,6 +30,31 @@
             transform: scale(1.02);
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
+        .token-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            margin: 1px;
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+        .token-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+        }
+        .token-special {
+            background: linear-gradient(135deg, #F59E0B, #D97706);
+            box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+        }
+        .token-pad {
+            background: linear-gradient(135deg, #6B7280, #4B5563);
+            box-shadow: 0 2px 4px rgba(107, 114, 128, 0.3);
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -42,11 +67,58 @@
             </p>
         </div>
 
+        <!-- Text Input and Tokenization -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">🔤 Text → Tokens</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Input Text</label>
+                    <textarea 
+                        id="inputText" 
+                        placeholder="Type your text here... (e.g., 'the cat sat on the mat')"
+                        class="w-full h-20 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                    >the cat sat on the mat</textarea>
+                    <div class="mt-2 text-xs text-gray-500">
+                        Characters: <span id="charCount">22</span> | 
+                        Estimated tokens: <span id="tokenCount">6</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tokens</label>
+                    <div id="tokenDisplay" class="w-full h-20 p-3 border border-gray-200 rounded-lg bg-gray-50 overflow-y-auto">
+                        <div class="flex flex-wrap gap-1">
+                            <span class="token-badge">the</span>
+                            <span class="token-badge">cat</span>
+                            <span class="token-badge">sat</span>
+                            <span class="token-badge">on</span>
+                            <span class="token-badge">the</span>
+                            <span class="token-badge">mat</span>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        Actual sequence length: <span id="actualSeqLen">6</span> tokens
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+                <div class="text-sm text-gray-600">
+                    <span class="inline-flex items-center">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                        Each token becomes a <strong id="embeddingSize">1024</strong>-dimensional embedding
+                    </span>
+                </div>
+                <button id="updateModel" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                    🔄 Update Model
+                </button>
+            </div>
+        </div>
+
         <!-- Controls -->
         <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">⚙️ Model Parameters</h3>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Sequence Length</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Max Sequence Length</label>
                     <input type="range" id="seqLen" min="4" max="16" value="8" class="w-full">
                     <span class="text-sm text-gray-500" id="seqLenValue">8</span>
                 </div>
@@ -119,7 +191,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <div class="text-xs text-gray-600 mb-1">Q Compression (w_dq)</div>
+                            <div class="text-xs text-gray-600 mb-1">Q: [1024] → W_dq[1024→128] → [128]</div>
                             <svg id="mla-q-comp" width="100%" height="80" viewBox="0 0 180 80"></svg>
                             <div class="bg-purple-100 rounded p-1 mt-1">
                                 <p class="text-xs text-purple-700 font-medium" id="mla-q-comp-shape">[1, 8, 128] = 1,024 values</p>
@@ -127,7 +199,7 @@
                             </div>
                         </div>
                         <div>
-                            <div class="text-xs text-gray-600 mb-1">KV Compression (w_dkv)</div>
+                            <div class="text-xs text-gray-600 mb-1">KV: [1024] → W_dkv[1024→128] → [128]</div>
                             <svg id="mla-kv-comp" width="100%" height="80" viewBox="0 0 180 80"></svg>
                             <div class="bg-purple-100 rounded p-1 mt-1">
                                 <p class="text-xs text-purple-700 font-medium" id="mla-kv-comp-shape">[1, 8, 128] = 1,024 values</p>
@@ -152,31 +224,88 @@
                 <div class="stage-container bg-white rounded-lg shadow p-4" id="mla-stage3">
                     <div class="flex items-center mb-3">
                         <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">3</div>
-                        <h3 class="font-semibold text-gray-800">QKV with NoPE/RoPE Split</h3>
+                        <h3 class="font-semibold text-gray-800">Latent → QKV Upsampling</h3>
                     </div>
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-blue-600 font-medium">Q: NoPE + RoPE</span>
-                                <svg id="mla-q-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-blue-600 font-medium mb-2">Q: [128] → W_uq[128→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="40" height="20" fill="#3B82F6" opacity="0.3" rx="2"/>
+                                    <text x="30" y="32" text-anchor="middle" fill="#1E40AF" font-size="8">[128]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="65" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_uq -->
+                                    <rect x="80" y="15" width="80" height="30" fill="#3B82F6" opacity="0.8" rx="2"/>
+                                    <text x="120" y="28" text-anchor="middle" fill="white" font-size="9" font-weight="bold">W_uq</text>
+                                    <text x="120" y="37" text-anchor="middle" fill="white" font-size="7">[128→1024]</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="180" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="200" y="20" width="60" height="20" fill="#3B82F6" opacity="0.6" rx="2"/>
+                                    <text x="230" y="32" text-anchor="middle" fill="#1E40AF" font-size="8">[1024] Q</text>
+                                </svg>
                             </div>
                             <div class="bg-blue-50 rounded p-1">
                                 <p class="text-xs text-blue-700" id="mla-q-shape">NoPE: [1, 8, 8, 96] + RoPE: [1, 8, 8, 32] = 8,192 values</p>
                             </div>
                         </div>
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-red-600 font-medium">K: NoPE + RoPE</span>
-                                <svg id="mla-k-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-red-600 font-medium mb-2">K: [128] → W_uk[128→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="40" height="20" fill="#EF4444" opacity="0.3" rx="2"/>
+                                    <text x="30" y="32" text-anchor="middle" fill="#DC2626" font-size="8">[128]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="65" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_uk -->
+                                    <rect x="80" y="15" width="80" height="30" fill="#EF4444" opacity="0.8" rx="2"/>
+                                    <text x="120" y="28" text-anchor="middle" fill="white" font-size="9" font-weight="bold">W_uk</text>
+                                    <text x="120" y="37" text-anchor="middle" fill="white" font-size="7">[128→1024]</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="180" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="200" y="20" width="60" height="20" fill="#EF4444" opacity="0.6" rx="2"/>
+                                    <text x="230" y="32" text-anchor="middle" fill="#DC2626" font-size="8">[1024] K</text>
+                                </svg>
                             </div>
                             <div class="bg-red-50 rounded p-1">
                                 <p class="text-xs text-red-700" id="mla-k-shape">NoPE: [1, 8, 8, 64] + RoPE: [1, 8, 1, 64] = 4,608 values</p>
                             </div>
                         </div>
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-orange-600 font-medium">V: Value states</span>
-                                <svg id="mla-v-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-orange-600 font-medium mb-2">V: [128] → W_uv[128→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="40" height="20" fill="#F97316" opacity="0.3" rx="2"/>
+                                    <text x="30" y="32" text-anchor="middle" fill="#EA580C" font-size="8">[128]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="65" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_uv -->
+                                    <rect x="80" y="15" width="80" height="30" fill="#F97316" opacity="0.8" rx="2"/>
+                                    <text x="120" y="28" text-anchor="middle" fill="white" font-size="9" font-weight="bold">W_uv</text>
+                                    <text x="120" y="37" text-anchor="middle" fill="white" font-size="7">[128→1024]</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="180" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="200" y="20" width="60" height="20" fill="#F97316" opacity="0.6" rx="2"/>
+                                    <text x="230" y="32" text-anchor="middle" fill="#EA580C" font-size="8">[1024] V</text>
+                                </svg>
                             </div>
                             <div class="bg-orange-50 rounded p-1">
                                 <p class="text-xs text-orange-700" id="mla-v-shape">[1, 8, 8, 256] = 16,384 values</p>
@@ -271,29 +400,89 @@
                         <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">2</div>
                         <h3 class="font-semibold text-blue-800">Direct QKV Projections</h3>
                     </div>
-                    <div class="space-y-3">
+                    <div class="space-y-4">
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-blue-600 font-medium">W_Q (1024 → 8×128)</span>
-                                <svg id="mha-q-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-blue-600 font-medium mb-2">Q: [1024] → W_Q[1024→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="60" height="20" fill="#3B82F6" opacity="0.3" rx="2"/>
+                                    <text x="40" y="32" text-anchor="middle" fill="#1E40AF" font-size="8">[1024]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="85" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_Q (larger to show it's 1024x1024) -->
+                                    <rect x="100" y="10" width="100" height="40" fill="#3B82F6" opacity="0.8" rx="2"/>
+                                    <text x="150" y="25" text-anchor="middle" fill="white" font-size="10" font-weight="bold">W_Q</text>
+                                    <text x="150" y="35" text-anchor="middle" fill="white" font-size="7">[1024→1024]</text>
+                                    <text x="150" y="43" text-anchor="middle" fill="white" font-size="7">1M params</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="220" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="240" y="20" width="30" height="20" fill="#3B82F6" opacity="0.6" rx="2"/>
+                                    <text x="255" y="32" text-anchor="middle" fill="#1E40AF" font-size="8">Q</text>
+                                </svg>
                             </div>
                             <div class="bg-blue-100 rounded p-1">
                                 <p class="text-xs text-blue-700" id="mha-q-shape">[1, 8, 8, 128] = 8,192 values</p>
                             </div>
                         </div>
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-red-600 font-medium">W_K (1024 → 8×128)</span>
-                                <svg id="mha-k-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-red-600 font-medium mb-2">K: [1024] → W_K[1024→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="60" height="20" fill="#EF4444" opacity="0.3" rx="2"/>
+                                    <text x="40" y="32" text-anchor="middle" fill="#DC2626" font-size="8">[1024]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="85" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_K -->
+                                    <rect x="100" y="10" width="100" height="40" fill="#EF4444" opacity="0.8" rx="2"/>
+                                    <text x="150" y="25" text-anchor="middle" fill="white" font-size="10" font-weight="bold">W_K</text>
+                                    <text x="150" y="35" text-anchor="middle" fill="white" font-size="7">[1024→1024]</text>
+                                    <text x="150" y="43" text-anchor="middle" fill="white" font-size="7">1M params</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="220" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="240" y="20" width="30" height="20" fill="#EF4444" opacity="0.6" rx="2"/>
+                                    <text x="255" y="32" text-anchor="middle" fill="#DC2626" font-size="8">K</text>
+                                </svg>
                             </div>
                             <div class="bg-red-100 rounded p-1">
                                 <p class="text-xs text-red-700" id="mha-k-shape">[1, 8, 8, 128] = 8,192 values</p>
                             </div>
                         </div>
                         <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-orange-600 font-medium">W_V (1024 → 8×128)</span>
-                                <svg id="mha-v-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            <div class="text-xs text-orange-600 font-medium mb-2">V: [1024] → W_V[1024→1024] → [1024]</div>
+                            <div class="flex items-center justify-center mb-2">
+                                <svg width="280" height="60" viewBox="0 0 280 60">
+                                    <!-- Input vector -->
+                                    <rect x="10" y="20" width="60" height="20" fill="#F97316" opacity="0.3" rx="2"/>
+                                    <text x="40" y="32" text-anchor="middle" fill="#EA580C" font-size="8">[1024]</text>
+                                    
+                                    <!-- Multiplication -->
+                                    <text x="85" y="32" text-anchor="middle" fill="#6B7280" font-size="12">×</text>
+                                    
+                                    <!-- Matrix W_V -->
+                                    <rect x="100" y="10" width="100" height="40" fill="#F97316" opacity="0.8" rx="2"/>
+                                    <text x="150" y="25" text-anchor="middle" fill="white" font-size="10" font-weight="bold">W_V</text>
+                                    <text x="150" y="35" text-anchor="middle" fill="white" font-size="7">[1024→1024]</text>
+                                    <text x="150" y="43" text-anchor="middle" fill="white" font-size="7">1M params</text>
+                                    
+                                    <!-- Equals -->
+                                    <text x="220" y="32" text-anchor="middle" fill="#6B7280" font-size="12">=</text>
+                                    
+                                    <!-- Output vector -->
+                                    <rect x="240" y="20" width="30" height="20" fill="#F97316" opacity="0.6" rx="2"/>
+                                    <text x="255" y="32" text-anchor="middle" fill="#EA580C" font-size="8">V</text>
+                                </svg>
                             </div>
                             <div class="bg-orange-100 rounded p-1">
                                 <p class="text-xs text-orange-700" id="mha-v-shape">[1, 8, 8, 128] = 8,192 values</p>
@@ -430,7 +619,7 @@
                         <svg width="280" height="120" viewBox="0 0 280 120">
                             <!-- First matrix -->
                             <rect x="10" y="30" width="80" height="60" fill="#8B5CF6" opacity="0.8" rx="4"/>
-                            <text x="50" y="50" text-anchor="middle" fill="white" font-size="10" font-weight="bold">w_dq</text>
+                            <text x="50" y="50" text-anchor="middle" fill="white" font-size="10" font-weight="bold">W_dq</text>
                             <text x="50" y="65" text-anchor="middle" fill="white" font-size="8" id="mla-compress-dims">[1024, 128]</text>
                             <text x="50" y="75" text-anchor="middle" fill="white" font-size="8" id="mla-compress-params">131k</text>
                             
@@ -439,7 +628,7 @@
                             
                             <!-- Second matrix -->
                             <rect x="130" y="20" width="60" height="80" fill="#8B5CF6" opacity="0.8" rx="4"/>
-                            <text x="160" y="45" text-anchor="middle" fill="white" font-size="10" font-weight="bold">w_uq</text>
+                            <text x="160" y="45" text-anchor="middle" fill="white" font-size="10" font-weight="bold">W_uq</text>
                             <text x="160" y="60" text-anchor="middle" fill="white" font-size="8" id="mla-decompress-dims">[128, 1024]</text>
                             <text x="160" y="70" text-anchor="middle" fill="white" font-size="8" id="mla-decompress-params">131k</text>
                             
@@ -549,6 +738,10 @@
         let numHeads = 8;
         let compressedDim = 128;
         let originalDim = 1024;
+        let currentTokens = [];
+        let actualSeqLen = 6;
+        let backendUrl = 'http://localhost:8020';
+        let realOperations = null;
 
         // Color schemes
         const colors = {
@@ -565,6 +758,140 @@
         function init() {
             updateDimensions();
             drawSideBySideComparison();
+            tokenizeText();
+        }
+
+        // Call backend to tokenize text
+        async function tokenizeText() {
+            const text = document.getElementById('inputText').value;
+            
+            if (!text.trim()) {
+                currentTokens = [];
+                actualSeqLen = 0;
+                updateTokenDisplay();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${backendUrl}/tokenize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        max_length: seqLen
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('✅ Backend tokenization successful:', data);
+                currentTokens = data.tokens;
+                actualSeqLen = data.actual_length;
+                
+                // Update character and token counts
+                document.getElementById('charCount').textContent = text.length;
+                document.getElementById('tokenCount').textContent = data.actual_length;
+                document.getElementById('actualSeqLen').textContent = actualSeqLen;
+                
+                updateTokenDisplay(data);
+                updateTokenBasedDimensions();
+                
+            } catch (error) {
+                console.error('Tokenization failed:', error);
+                console.log('Using fallback tokenization - this means backend request failed');
+                // Fallback to simple tokenization
+                const tokens = text.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+                currentTokens = tokens.slice(0, seqLen);
+                actualSeqLen = Math.min(tokens.length, seqLen);
+                
+                document.getElementById('charCount').textContent = text.length;
+                document.getElementById('tokenCount').textContent = tokens.length;
+                document.getElementById('actualSeqLen').textContent = actualSeqLen;
+                
+                updateTokenDisplay();
+                updateTokenBasedDimensions();
+            }
+        }
+
+        // Update token display
+        function updateTokenDisplay(tokenData = null) {
+            const tokenDisplay = document.getElementById('tokenDisplay');
+            tokenDisplay.innerHTML = '';
+            
+            const tokenContainer = document.createElement('div');
+            tokenContainer.className = 'flex flex-wrap gap-1';
+            
+            if (tokenData) {
+                // Use real tokenizer data
+                for (let i = 0; i < tokenData.tokens.length; i++) {
+                    const token = tokenData.tokens[i];
+                    const isActual = tokenData.attention_mask[i] === 1;
+                    const isPadding = !isActual;
+                    
+                    const tokenSpan = document.createElement('span');
+                    tokenSpan.className = `token-badge ${isPadding ? 'token-pad' : ''}`;
+                    tokenSpan.textContent = token.startsWith('Ġ') ? token.substring(1) : token; // Clean GPT-2 tokens
+                    tokenSpan.title = `Token ${i + 1}: "${token}" (ID: ${tokenData.token_ids[i]})`;
+                    tokenContainer.appendChild(tokenSpan);
+                }
+            } else {
+                // Fallback display
+                for (let i = 0; i < Math.min(currentTokens.length, seqLen); i++) {
+                    const tokenSpan = document.createElement('span');
+                    tokenSpan.className = 'token-badge';
+                    tokenSpan.textContent = currentTokens[i];
+                    tokenSpan.title = `Token ${i + 1}: "${currentTokens[i]}"`;
+                    tokenContainer.appendChild(tokenSpan);
+                }
+                
+                // Add padding
+                const paddingNeeded = Math.max(0, seqLen - currentTokens.length);
+                for (let i = 0; i < paddingNeeded; i++) {
+                    const padSpan = document.createElement('span');
+                    padSpan.className = 'token-badge token-pad';
+                    padSpan.textContent = '[PAD]';
+                    padSpan.title = 'Padding token';
+                    tokenContainer.appendChild(padSpan);
+                }
+            }
+            
+            tokenDisplay.appendChild(tokenContainer);
+            document.getElementById('embeddingSize').textContent = originalDim;
+        }
+
+        // Update dimension calculations based on actual token count
+        function updateTokenBasedDimensions() {
+            const effectiveSeqLen = actualSeqLen;
+            
+            // Update the visualization to show actual vs padded sequence
+            const inputValues = effectiveSeqLen * originalDim;
+            const compressedValues = effectiveSeqLen * compressedDim;
+            
+            // Update relevant displays to show both actual and padded dimensions
+            const paddedInputValues = seqLen * originalDim;
+            const paddedCompressedValues = seqLen * compressedDim;
+            
+            // Show both actual and padded in key places
+            document.getElementById('mla-input-shape').innerHTML = 
+                `[1, ${effectiveSeqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values<br>` +
+                `<small style="color: #6B7280;">(padded: [1, ${seqLen}, ${originalDim}] = ${paddedInputValues.toLocaleString()} values)</small>`;
+            
+            document.getElementById('mla-output-shape').innerHTML = 
+                `[1, ${effectiveSeqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values<br>` +
+                `<small style="color: #6B7280;">(padded: [1, ${seqLen}, ${originalDim}] = ${paddedInputValues.toLocaleString()} values)</small>`;
+            
+            document.getElementById('mha-input-shape').innerHTML = 
+                `[1, ${effectiveSeqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values<br>` +
+                `<small style="color: #6B7280;">(padded: [1, ${seqLen}, ${originalDim}] = ${paddedInputValues.toLocaleString()} values)</small>`;
+            
+            document.getElementById('mha-output-shape').innerHTML = 
+                `[1, ${effectiveSeqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values<br>` +
+                `<small style="color: #6B7280;">(padded: [1, ${seqLen}, ${originalDim}] = ${paddedInputValues.toLocaleString()} values)</small>`;
         }
 
         // Update global variables from controls
@@ -669,31 +996,181 @@
             document.getElementById('param-reduction').textContent = `• ${paramReduction}% parameter reduction!`;
         }
 
-        // Draw side-by-side comparison
-        function drawSideBySideComparison() {
-            // Draw MLA side
-            drawEmbedding('#mla-input', colors.input);
-            drawCompression('#mla-q-comp', colors.compressed);
-            drawCompression('#mla-kv-comp', colors.compressed);
-            drawSplit('#mla-q-split', [colors.q, colors.q]);
-            drawSplit('#mla-k-split', [colors.k, colors.k]);
-            drawSplit('#mla-v-split', [colors.v]);
-            drawAttention('#mla-attention', colors.attention);
-            drawEmbedding('#mla-output', colors.output);
+        // Run real comparison using backend
+        async function runRealComparison() {
+            const text = document.getElementById('inputText').value;
             
-            // Draw MHA side
-            drawEmbedding('#mha-input', colors.input);
-            drawProjection('#mha-q-proj', colors.q);
-            drawProjection('#mha-k-proj', colors.k);
-            drawProjection('#mha-v-proj', colors.v);
-            drawProjection('#mha-q-rope', colors.q);
-            drawProjection('#mha-k-rope', colors.k);
-            drawProjection('#mha-v-unchanged', colors.v);
-            drawAttention('#mha-attention', colors.attention);
-            drawEmbedding('#mha-output', colors.output);
+            if (!text.trim()) {
+                alert('Please enter some text to analyze');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${backendUrl}/compare_attention`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        max_length: seqLen,
+                        config: {
+                            dim: originalDim,
+                            n_heads: numHeads,
+                            n_kv_heads: numHeads,
+                            q_compressed_dim: compressedDim,
+                            kv_compressed_dim: compressedDim,
+                            max_length: seqLen
+                        }
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                realOperations = await response.json();
+                updateRealDimensions();
+                showComparisonResults();
+                
+            } catch (error) {
+                console.error('Backend comparison failed:', error);
+                throw error;
+            }
         }
 
-        function drawEmbedding(selector, color) {
+        // Update dimensions with real backend data
+        function updateRealDimensions() {
+            if (!realOperations) return;
+            
+            // Update with real operation data
+            const mlaOps = realOperations.mla_operations;
+            const mhaOps = realOperations.mha_operations;
+            
+            // Update MLA compression shapes
+            if (mlaOps.q_compression) {
+                const qCompShape = mlaOps.q_compression.output_shape;
+                document.getElementById('mla-q-comp-shape').textContent = 
+                    `[${qCompShape.join(', ')}] = ${qCompShape.reduce((a,b) => a*b).toLocaleString()} values`;
+            }
+            
+            if (mlaOps.kv_compression) {
+                const kvCompShape = mlaOps.kv_compression.output_shape;
+                document.getElementById('mla-kv-comp-shape').textContent = 
+                    `[${kvCompShape.join(', ')}] = ${kvCompShape.reduce((a,b) => a*b).toLocaleString()} values`;
+            }
+            
+            // Update MHA direct projection info
+            if (mhaOps.direct_projections) {
+                const qShape = mhaOps.direct_projections.q_shape;
+                document.getElementById('mha-q-shape').textContent = 
+                    `[${qShape.join(', ')}] = ${qShape.reduce((a,b) => a*b).toLocaleString()} values`;
+                    
+                const kShape = mhaOps.direct_projections.k_shape;
+                document.getElementById('mha-k-shape').textContent = 
+                    `[${kShape.join(', ')}] = ${kShape.reduce((a,b) => a*b).toLocaleString()} values`;
+                    
+                const vShape = mhaOps.direct_projections.v_shape;
+                document.getElementById('mha-v-shape').textContent = 
+                    `[${vShape.join(', ')}] = ${vShape.reduce((a,b) => a*b).toLocaleString()} values`;
+            }
+        }
+
+        // Show comparison results in a modal or section
+        function showComparisonResults() {
+            if (!realOperations) return;
+            
+            const timing = realOperations.timing_comparison;
+            const memory = realOperations.memory_comparison;
+            
+            // Create or update results section
+            let resultsSection = document.getElementById('realResults');
+            if (!resultsSection) {
+                resultsSection = document.createElement('div');
+                resultsSection.id = 'realResults';
+                resultsSection.className = 'mt-8 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border-2 border-green-200';
+                document.querySelector('.container').appendChild(resultsSection);
+            }
+            
+            resultsSection.innerHTML = `
+                <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">🧪 Real Performance Results</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-3">⏱️ Timing Comparison</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-purple-600">MLA Time:</span>
+                                <span class="font-mono">${timing.mla_time_ms.toFixed(2)} ms</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-blue-600">MHA Time:</span>
+                                <span class="font-mono">${timing.mha_time_ms.toFixed(2)} ms</span>
+                            </div>
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-green-600">Speedup:</span>
+                                <span class="font-mono">${timing.speedup.toFixed(2)}x</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg p-4">
+                        <h4 class="font-semibold text-gray-700 mb-3">💾 Memory Comparison</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-purple-600">MLA Parameters:</span>
+                                <span class="font-mono">${memory.mla_parameters.toLocaleString()}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-blue-600">MHA Parameters:</span>
+                                <span class="font-mono">${memory.mha_parameters.toLocaleString()}</span>
+                            </div>
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-green-600">Memory Reduction:</span>
+                                <span class="font-mono">${memory.reduction_percentage.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-green-100 rounded p-3">
+                    <p class="text-sm text-green-700 text-center">
+                        <strong>Real Text:</strong> "${realOperations.tokens.slice(0, 10).join(' ')}"
+                        ${realOperations.tokens.length > 10 ? '...' : ''}
+                    </p>
+                </div>
+            `;
+            
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Draw side-by-side comparison
+        function drawSideBySideComparison() {
+            // Use real tensor data if available
+            const mlaOps = realOperations?.mla_operations;
+            const mhaOps = realOperations?.mha_operations;
+            const inputData = realOperations?.input_embeddings;
+            
+            // Draw MLA side with real data
+            drawEmbedding('#mla-input', colors.input, inputData ? {input: {data: inputData}} : null, 'input');
+            drawCompression('#mla-q-comp', colors.compressed, mlaOps, 'q_compression');
+            drawCompression('#mla-kv-comp', colors.compressed, mlaOps, 'kv_compression');
+            drawSplit('#mla-q-split', [colors.q, colors.q], mlaOps, ['q_nope', 'q_rope']);
+            drawSplit('#mla-k-split', [colors.k, colors.k], mlaOps, ['k_nope', 'k_rope']);
+            drawSplit('#mla-v-split', [colors.v], mlaOps, ['v_data']);
+            drawAttention('#mla-attention', colors.attention, mlaOps, 'attention');
+            drawEmbedding('#mla-output', colors.output, mlaOps, 'output');
+            
+            // Draw MHA side with real data
+            drawEmbedding('#mha-input', colors.input, inputData ? {input: {data: inputData}} : null, 'input');
+            drawProjection('#mha-q-proj', colors.q, mhaOps, 'q_data');
+            drawProjection('#mha-k-proj', colors.k, mhaOps, 'k_data');
+            drawProjection('#mha-v-proj', colors.v, mhaOps, 'v_data');
+            drawProjection('#mha-q-rope', colors.q, mhaOps, 'q_rope');
+            drawProjection('#mha-k-rope', colors.k, mhaOps, 'k_rope');
+            drawProjection('#mha-v-unchanged', colors.v, mhaOps, 'v_data');
+            drawAttention('#mha-attention', colors.attention, mhaOps, 'attention');
+            drawEmbedding('#mha-output', colors.output, mhaOps, 'output');
+        }
+
+        function drawEmbedding(selector, color, tensorData = null, dataKey = null) {
             const svg = d3.select(selector);
             svg.selectAll('*').remove();
             
@@ -706,34 +1183,97 @@
                 .attr('transform', `translate(0, ${(height - cellHeight) / 2})`);
             
             for (let i = 0; i < seqLen; i++) {
+                const isActualToken = i < actualSeqLen;
+                const isPadding = i >= actualSeqLen;
+                
+                // Get actual tensor values if available
+                let magnitude = 0;
+                let preview = '';
+                if (tensorData && dataKey && tensorData[dataKey] && tensorData[dataKey].data && i < tensorData[dataKey].data.length) {
+                    const values = tensorData[dataKey].data[i];
+                    if (Array.isArray(values)) {
+                        magnitude = Math.sqrt(values.slice(0, 10).reduce((sum, val) => sum + val * val, 0)) / Math.sqrt(10);
+                        preview = values.slice(0, 3).map(v => v.toFixed(2)).join(',') + '...';
+                    }
+                }
+                
+                // Color intensity based on magnitude
+                const intensity = magnitude > 0 ? Math.min(magnitude / 3, 1) : 0.8;
+                
                 g.append('rect')
                     .attr('class', 'matrix-cell')
                     .attr('x', i * cellWidth + 2)
                     .attr('y', 0)
                     .attr('width', cellWidth - 4)
                     .attr('height', cellHeight)
-                    .attr('fill', color)
-                    .attr('opacity', 0.8)
-                    .attr('rx', 4);
+                    .attr('fill', isPadding ? '#9CA3AF' : color)
+                    .attr('opacity', isPadding ? 0.5 : intensity)
+                    .attr('rx', 4)
+                    .attr('stroke', isPadding ? '#6B7280' : 'none')
+                    .attr('stroke-width', isPadding ? 1 : 0)
+                    .attr('stroke-dasharray', isPadding ? '2,2' : 'none')
+                    .attr('title', tensorData && magnitude > 0 ? 
+                        `Token: "${currentTokens[i] || ''}" | Magnitude: ${magnitude.toFixed(3)} | Values: [${preview}]` :
+                        (isActualToken ? `Token: "${currentTokens[i] || ''}"` : (isPadding ? 'Padding token' : `Token ${i + 1}`)));
+                
+                const tokenText = isActualToken && currentTokens[i] ? 
+                    (currentTokens[i].length > 8 ? currentTokens[i].substring(0, 6) + '..' : currentTokens[i]) :
+                    (isPadding ? 'PAD' : `T${i + 1}`);
                 
                 g.append('text')
                     .attr('x', i * cellWidth + cellWidth / 2)
-                    .attr('y', cellHeight / 2)
+                    .attr('y', cellHeight / 2 - 5)
                     .attr('text-anchor', 'middle')
                     .attr('dominant-baseline', 'middle')
                     .attr('fill', 'white')
-                    .attr('font-size', '12px')
+                    .attr('font-size', cellWidth > 40 ? '11px' : '9px')
                     .attr('font-weight', 'bold')
-                    .text(`T${i + 1}`);
+                    .text(tokenText);
+                
+                // Show magnitude below token name if available
+                if (magnitude > 0) {
+                    g.append('text')
+                        .attr('x', i * cellWidth + cellWidth / 2)
+                        .attr('y', cellHeight / 2 + 10)
+                        .attr('text-anchor', 'middle')
+                        .attr('fill', 'white')
+                        .attr('font-size', '8px')
+                        .text(`||${magnitude.toFixed(2)}||`);
+                }
             }
         }
 
-        function drawCompression(selector, color) {
+        function drawCompression(selector, color, tensorData = null, dataKey = null) {
             const svg = d3.select(selector);
             svg.selectAll('*').remove();
             
             const width = 180;
             const height = 80;
+            
+            // Get tensor magnitude for color intensity
+            let avgMagnitude = 0;
+            let preview = '';
+            if (tensorData && dataKey && tensorData[dataKey] && tensorData[dataKey].data) {
+                const data = tensorData[dataKey].data;
+                if (Array.isArray(data) && data.length > 0) {
+                    // Calculate average magnitude across first few tokens
+                    let totalMag = 0;
+                    let count = 0;
+                    for (let i = 0; i < Math.min(3, data.length); i++) {
+                        if (Array.isArray(data[i])) {
+                            const mag = Math.sqrt(data[i].slice(0, 10).reduce((sum, val) => sum + val * val, 0)) / Math.sqrt(10);
+                            totalMag += mag;
+                            count++;
+                        }
+                    }
+                    avgMagnitude = count > 0 ? totalMag / count : 0;
+                    if (data[0] && Array.isArray(data[0])) {
+                        preview = data[0].slice(0, 3).map(v => v.toFixed(2)).join(',') + '...';
+                    }
+                }
+            }
+            
+            const intensity = avgMagnitude > 0 ? Math.min(avgMagnitude / 2, 1) : 0.8;
             
             // Input
             svg.append('rect')
@@ -762,26 +1302,40 @@
                 .attr('stroke', '#8B5CF6')
                 .attr('stroke-width', 2);
             
-            // Compressed
+            // Compressed - with intensity based on real data
             svg.append('rect')
                 .attr('x', 110)
                 .attr('y', 25)
                 .attr('width', 40)
                 .attr('height', 30)
                 .attr('fill', color)
-                .attr('opacity', 0.8)
-                .attr('rx', 4);
+                .attr('opacity', intensity)
+                .attr('rx', 4)
+                .attr('title', avgMagnitude > 0 ? 
+                    `Avg Magnitude: ${avgMagnitude.toFixed(3)} | Sample: [${preview}]` : 
+                    'Compressed representation');
             
             svg.append('text')
                 .attr('x', 130)
-                .attr('y', 45)
+                .attr('y', 42)
                 .attr('text-anchor', 'middle')
                 .attr('fill', 'white')
                 .attr('font-size', '10px')
                 .text('128');
+            
+            // Show magnitude if available
+            if (avgMagnitude > 0) {
+                svg.append('text')
+                    .attr('x', 130)
+                    .attr('y', 52)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', 'white')
+                    .attr('font-size', '8px')
+                    .text(`||${avgMagnitude.toFixed(2)}||`);
+            }
         }
 
-        function drawSplit(selector, colors) {
+        function drawSplit(selector, colors, tensorData = null, dataKeys = null) {
             const svg = d3.select(selector);
             svg.selectAll('*').remove();
             
@@ -791,14 +1345,35 @@
             const partWidth = width / numParts;
             
             for (let i = 0; i < numParts; i++) {
-                svg.append('rect')
+                let opacity = 0.8;
+                let tooltipText = '';
+                
+                // Calculate opacity and tooltip based on tensor data if available
+                if (tensorData && dataKeys && dataKeys[i] && tensorData[dataKeys[i]] && tensorData[dataKeys[i]].data) {
+                    const data = tensorData[dataKeys[i]].data;
+                    if (data.length > 0 && Array.isArray(data[0])) {
+                        const flatValues = data.flat();
+                        const avgMagnitude = flatValues.reduce((sum, val) => sum + Math.abs(val), 0) / flatValues.length;
+                        opacity = Math.min(0.9, Math.max(0.3, avgMagnitude * 2));
+                        
+                        const preview = flatValues.slice(0, 3).map(v => v.toFixed(2)).join(', ');
+                        tooltipText = `Avg magnitude: ${avgMagnitude.toFixed(3)}\nSample: [${preview}...]`;
+                    }
+                }
+                
+                const rect = svg.append('rect')
                     .attr('x', i * partWidth + 2)
                     .attr('y', 2)
                     .attr('width', partWidth - 4)
                     .attr('height', 21)
                     .attr('fill', colors[i])
-                    .attr('opacity', 0.8)
+                    .attr('opacity', opacity)
                     .attr('rx', 2);
+                
+                // Add tooltip if we have tensor data
+                if (tooltipText) {
+                    rect.append('title').text(tooltipText);
+                }
                 
                 const label = numParts === 2 ? (i === 0 ? 'NoPE' : 'RoPE') : 'Value';
                 svg.append('text')
@@ -811,21 +1386,43 @@
             }
         }
 
-        function drawProjection(selector, color) {
+        function drawProjection(selector, color, tensorData = null, dataKey = null) {
             const svg = d3.select(selector);
             svg.selectAll('*').remove();
             
             const width = 200;
             const height = 25;
             
-            svg.append('rect')
+            // Calculate opacity based on tensor data if available
+            let opacity = 0.8;
+            let tooltipText = `${numHeads} heads`;
+            
+            if (tensorData && dataKey && tensorData[dataKey] && tensorData[dataKey].data) {
+                const data = tensorData[dataKey].data;
+                if (data.length > 0 && Array.isArray(data[0])) {
+                    // Calculate average magnitude for opacity
+                    const flatValues = data.flat();
+                    const avgMagnitude = flatValues.reduce((sum, val) => sum + Math.abs(val), 0) / flatValues.length;
+                    opacity = Math.min(0.9, Math.max(0.3, avgMagnitude * 2));
+                    
+                    const preview = flatValues.slice(0, 3).map(v => v.toFixed(2)).join(', ');
+                    tooltipText = `${numHeads} heads\nAvg magnitude: ${avgMagnitude.toFixed(3)}\nSample: [${preview}...]`;
+                }
+            }
+            
+            const rect = svg.append('rect')
                 .attr('x', 10)
                 .attr('y', 2)
                 .attr('width', width - 20)
                 .attr('height', 21)
                 .attr('fill', color)
-                .attr('opacity', 0.8)
+                .attr('opacity', opacity)
                 .attr('rx', 2);
+            
+            // Add tooltip if we have tensor data
+            if (tensorData && dataKey) {
+                rect.append('title').text(tooltipText);
+            }
             
             svg.append('text')
                 .attr('x', width / 2)
@@ -836,7 +1433,7 @@
                 .text(`${numHeads} heads`);
         }
 
-        function drawAttention(selector, color) {
+        function drawAttention(selector, color, tensorData = null, dataKey = null) {
             const svg = d3.select(selector);
             svg.selectAll('*').remove();
             
@@ -848,17 +1445,37 @@
             const g = svg.append('g')
                 .attr('transform', `translate(${(width - cellSize * matrixSize) / 2}, ${(height - cellSize * matrixSize) / 2})`);
             
+            // Get attention weights if available
+            let attentionWeights = null;
+            if (tensorData && dataKey && tensorData[dataKey] && tensorData[dataKey].attention_weights) {
+                attentionWeights = tensorData[dataKey].attention_weights;
+            }
+            
             for (let i = 0; i < matrixSize; i++) {
                 for (let j = 0; j < matrixSize; j++) {
-                    const attention = Math.random() * 0.8 + 0.2;
-                    g.append('rect')
+                    let attention = Math.random() * 0.8 + 0.2; // fallback
+                    let tooltipText = `Attention[${i},${j}]: ${attention.toFixed(3)}`;
+                    
+                    // Use real attention weights if available
+                    if (attentionWeights && 
+                        attentionWeights.length > 0 && 
+                        attentionWeights[0].length > i && 
+                        attentionWeights[0][i].length > j) {
+                        attention = Math.abs(attentionWeights[0][i][j]); // Use first head
+                        tooltipText = `Attention[${i},${j}]: ${attention.toFixed(4)} (real)`;
+                    }
+                    
+                    const rect = g.append('rect')
                         .attr('x', j * cellSize)
                         .attr('y', i * cellSize)
                         .attr('width', cellSize - 1)
                         .attr('height', cellSize - 1)
                         .attr('fill', color)
-                        .attr('opacity', attention)
+                        .attr('opacity', Math.min(0.9, Math.max(0.1, attention)))
                         .attr('rx', 1);
+                    
+                    // Add tooltip with real attention values
+                    rect.append('title').text(tooltipText);
                 }
             }
         }
@@ -920,8 +1537,27 @@
         }
 
         // Event listeners
+        document.getElementById('inputText').addEventListener('input', tokenizeText);
+        
+        document.getElementById('updateModel').addEventListener('click', async () => {
+            document.getElementById('updateModel').disabled = true;
+            document.getElementById('updateModel').textContent = '⏳ Computing...';
+            
+            try {
+                await runRealComparison();
+                init();
+            } catch (error) {
+                console.error('Model update failed:', error);
+                alert('Failed to update model. Make sure the backend is running on port 8000.');
+            } finally {
+                document.getElementById('updateModel').disabled = false;
+                document.getElementById('updateModel').textContent = '🔄 Update Model';
+            }
+        });
+
         document.getElementById('seqLen').addEventListener('input', () => {
             updateDimensions();
+            tokenizeText();
             init();
         });
 
