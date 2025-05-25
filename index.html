@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Head Latent Attention Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .matrix-cell {
+            transition: all 0.3s ease;
+        }
+        .matrix-cell:hover {
+            transform: scale(1.1);
+        }
+        .flow-arrow {
+            animation: flow 2s ease-in-out infinite;
+        }
+        @keyframes flow {
+            0%, 100% { opacity: 0.6; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+        .stage-container {
+            transition: all 0.5s ease;
+        }
+        .stage-container.active {
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">MLA vs MHA: Side-by-Side Comparison</h1>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">
+                Watch both architectures process embeddings simultaneously - see how MLA's compression and NoPE/RoPE split differs from traditional MHA
+            </p>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Sequence Length</label>
+                    <input type="range" id="seqLen" min="4" max="16" value="8" class="w-full">
+                    <span class="text-sm text-gray-500" id="seqLenValue">8</span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Number of Heads</label>
+                    <input type="range" id="numHeads" min="4" max="16" value="8" class="w-full">
+                    <span class="text-sm text-gray-500" id="numHeadsValue">8</span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Compressed Dim</label>
+                    <input type="range" id="compressedDim" min="64" max="256" value="128" class="w-full">
+                    <span class="text-sm text-gray-500" id="compressedDimValue">128</span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Animation Speed</label>
+                    <input type="range" id="animSpeed" min="1" max="10" value="5" class="w-full">
+                    <span class="text-sm text-gray-500" id="animSpeedValue">5</span>
+                </div>
+            </div>
+            <div class="mt-4 text-center">
+                <button id="playAnimation" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition duration-200">
+                    ▶️ Play Side-by-Side Animation
+                </button>
+                <button id="resetAnimation" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-lg ml-4 transition duration-200">
+                    🔄 Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Side-by-Side Comparison -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- MLA Column -->
+            <div class="space-y-6">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-purple-600 mb-2">Multi-Head Latent Attention (MLA)</h2>
+                    <p class="text-sm text-gray-600">Compressed latent space with NoPE/RoPE split</p>
+                </div>
+                
+                <!-- MLA Stage 1: Input -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mla-stage1">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">1</div>
+                        <h3 class="font-semibold text-gray-800">Input Embeddings</h3>
+                        <div class="ml-auto text-xs text-gray-500" id="mla-input-dims">[8, 1024]</div>
+                    </div>
+                    <svg id="mla-input" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-blue-50 rounded p-2 mt-2">
+                        <p class="text-xs text-blue-800 font-medium">Shape: [batch_size, seq_len, dim]</p>
+                        <p class="text-xs text-blue-600" id="mla-input-shape">[1, 8, 1024] = 8,192 values</p>
+                    </div>
+                </div>
+                
+                <!-- MLA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow1">
+                        <defs>
+                            <marker id="mla-arrowhead1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                                <polygon points="0 0, 8 3, 0 6" fill="#8B5CF6" />
+                            </marker>
+                        </defs>
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MLA Stage 2: Compression -->
+                <div class="stage-container bg-purple-50 rounded-lg shadow p-4 border-2 border-purple-200" id="mla-stage2">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">2</div>
+                        <h3 class="font-semibold text-purple-800">✨ Latent Compression</h3>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs text-gray-600 mb-1">Q Compression (w_dq)</div>
+                            <svg id="mla-q-comp" width="100%" height="80" viewBox="0 0 180 80"></svg>
+                            <div class="bg-purple-100 rounded p-1 mt-1">
+                                <p class="text-xs text-purple-700 font-medium" id="mla-q-comp-shape">[1, 8, 128] = 1,024 values</p>
+                                <p class="text-xs text-green-600">87.5% reduction!</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-gray-600 mb-1">KV Compression (w_dkv)</div>
+                            <svg id="mla-kv-comp" width="100%" height="80" viewBox="0 0 180 80"></svg>
+                            <div class="bg-purple-100 rounded p-1 mt-1">
+                                <p class="text-xs text-purple-700 font-medium" id="mla-kv-comp-shape">[1, 8, 128] = 1,024 values</p>
+                                <p class="text-xs text-green-600">87.5% reduction!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-green-50 rounded p-2 mt-3">
+                        <p class="text-xs text-green-700 font-medium">💾 Total Memory: 2,048 values (vs 8,192 original)</p>
+                        <p class="text-xs text-green-600">🎯 Compression Ratio: 4:1 (75% reduction)</p>
+                    </div>
+                </div>
+                
+                <!-- MLA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow2">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MLA Stage 3: QKV -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mla-stage3">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">3</div>
+                        <h3 class="font-semibold text-gray-800">QKV with NoPE/RoPE Split</h3>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-blue-600 font-medium">Q: NoPE + RoPE</span>
+                                <svg id="mla-q-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-blue-50 rounded p-1">
+                                <p class="text-xs text-blue-700" id="mla-q-shape">NoPE: [1, 8, 8, 96] + RoPE: [1, 8, 8, 32] = 8,192 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-red-600 font-medium">K: NoPE + RoPE</span>
+                                <svg id="mla-k-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-red-50 rounded p-1">
+                                <p class="text-xs text-red-700" id="mla-k-shape">NoPE: [1, 8, 8, 64] + RoPE: [1, 8, 1, 64] = 4,608 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-orange-600 font-medium">V: Value states</span>
+                                <svg id="mla-v-split" width="180" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-orange-50 rounded p-1">
+                                <p class="text-xs text-orange-700" id="mla-v-shape">[1, 8, 8, 256] = 16,384 values</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded p-2 mt-3">
+                        <p class="text-xs text-gray-700 font-medium">🧮 Total QKV: 29,184 values from compressed inputs</p>
+                    </div>
+                </div>
+                
+                <!-- MLA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow3">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MLA Stage 4: Attention -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mla-stage4">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">4</div>
+                        <h3 class="font-semibold text-gray-800">Multi-Head Attention</h3>
+                    </div>
+                    <svg id="mla-attention" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-orange-50 rounded p-2 mt-2">
+                        <p class="text-xs text-orange-800 font-medium">Attention Weights: [batch, heads, seq, seq]</p>
+                        <p class="text-xs text-orange-700" id="mla-attn-shape">[1, 8, 8, 8] = 512 values</p>
+                        <p class="text-xs text-orange-600">Output: [1, 8, 8, 256] = 16,384 values</p>
+                    </div>
+                </div>
+                
+                <!-- MLA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow4">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MLA Stage 5: Output -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mla-stage5">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">5</div>
+                        <h3 class="font-semibold text-gray-800">Output Projection</h3>
+                        <div class="ml-auto text-xs text-gray-500" id="mla-output-dims">[8, 1024]</div>
+                    </div>
+                    <svg id="mla-output" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-red-50 rounded p-2 mt-2">
+                        <p class="text-xs text-red-800 font-medium">Final Output: [batch, seq_len, dim]</p>
+                        <p class="text-xs text-red-700" id="mla-output-shape">[1, 8, 1024] = 8,192 values</p>
+                        <p class="text-xs text-green-600">✅ Same shape as input!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- MHA Column -->
+            <div class="space-y-6">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-blue-600 mb-2">Traditional Multi-Head Attention (MHA)</h2>
+                    <p class="text-sm text-gray-600">Direct QKV projections from full embeddings</p>
+                </div>
+                
+                <!-- MHA Stage 1: Input -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mha-stage1">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">1</div>
+                        <h3 class="font-semibold text-gray-800">Input Embeddings</h3>
+                        <div class="ml-auto text-xs text-gray-500" id="mha-input-dims">[8, 1024]</div>
+                    </div>
+                    <svg id="mha-input" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-blue-50 rounded p-2 mt-2">
+                        <p class="text-xs text-blue-800 font-medium">Shape: [batch_size, seq_len, dim]</p>
+                        <p class="text-xs text-blue-600" id="mha-input-shape">[1, 8, 1024] = 8,192 values</p>
+                    </div>
+                </div>
+                
+                <!-- MHA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow1">
+                        <defs>
+                            <marker id="mha-arrowhead1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                                <polygon points="0 0, 8 3, 0 6" fill="#3B82F6" />
+                            </marker>
+                        </defs>
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MHA Stage 2: Direct QKV -->
+                <div class="stage-container bg-blue-50 rounded-lg shadow p-4 border-2 border-blue-200" id="mha-stage2">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">2</div>
+                        <h3 class="font-semibold text-blue-800">Direct QKV Projections</h3>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-blue-600 font-medium">W_Q (1024 → 8×128)</span>
+                                <svg id="mha-q-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-blue-100 rounded p-1">
+                                <p class="text-xs text-blue-700" id="mha-q-shape">[1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-red-600 font-medium">W_K (1024 → 8×128)</span>
+                                <svg id="mha-k-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-red-100 rounded p-1">
+                                <p class="text-xs text-red-700" id="mha-k-shape">[1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-orange-600 font-medium">W_V (1024 → 8×128)</span>
+                                <svg id="mha-v-proj" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-orange-100 rounded p-1">
+                                <p class="text-xs text-orange-700" id="mha-v-shape">[1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-red-50 rounded p-2 mt-3">
+                        <p class="text-xs text-red-700 font-medium">💾 Total QKV: 24,576 values from full embeddings</p>
+                        <p class="text-xs text-red-600">⚠️ No compression - direct projection</p>
+                    </div>
+                </div>
+                
+                <!-- MHA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow2">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MHA Stage 3: RoPE -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mha-stage3">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">3</div>
+                        <h3 class="font-semibold text-gray-800">Rotary Position Encoding</h3>
+                    </div>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-blue-600 font-medium">Q + RoPE (full tensor)</span>
+                                <svg id="mha-q-rope" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-blue-50 rounded p-1">
+                                <p class="text-xs text-blue-700">RoPE applied to all [1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-red-600 font-medium">K + RoPE (full tensor)</span>
+                                <svg id="mha-k-rope" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-red-50 rounded p-1">
+                                <p class="text-xs text-red-700">RoPE applied to all [1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-orange-600 font-medium">V (unchanged)</span>
+                                <svg id="mha-v-unchanged" width="150" height="25" viewBox="0 0 200 25"></svg>
+                            </div>
+                            <div class="bg-orange-50 rounded p-1">
+                                <p class="text-xs text-orange-700">No position encoding: [1, 8, 8, 128] = 8,192 values</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-yellow-50 rounded p-2 mt-3">
+                        <p class="text-xs text-yellow-700 font-medium">🔄 RoPE: Full tensor rotation (vs MLA's split approach)</p>
+                    </div>
+                </div>
+                
+                <!-- MHA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow3">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MHA Stage 4: Attention -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mha-stage4">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">4</div>
+                        <h3 class="font-semibold text-gray-800">Multi-Head Attention</h3>
+                    </div>
+                    <svg id="mha-attention" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-orange-50 rounded p-2 mt-2">
+                        <p class="text-xs text-orange-800 font-medium">Attention Weights: [batch, heads, seq, seq]</p>
+                        <p class="text-xs text-orange-700" id="mha-attn-shape">[1, 8, 8, 8] = 512 values</p>
+                        <p class="text-xs text-orange-600">Output: [1, 8, 8, 128] = 8,192 values</p>
+                    </div>
+                </div>
+                
+                <!-- MHA Flow Arrow -->
+                <div class="flex justify-center">
+                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow4">
+                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    </svg>
+                </div>
+                
+                <!-- MHA Stage 5: Output -->
+                <div class="stage-container bg-white rounded-lg shadow p-4" id="mha-stage5">
+                    <div class="flex items-center mb-3">
+                        <div class="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">5</div>
+                        <h3 class="font-semibold text-gray-800">Output Projection</h3>
+                        <div class="ml-auto text-xs text-gray-500" id="mha-output-dims">[8, 1024]</div>
+                    </div>
+                    <svg id="mha-output" width="100%" height="120" viewBox="0 0 400 120"></svg>
+                    <div class="bg-red-50 rounded p-2 mt-2">
+                        <p class="text-xs text-red-800 font-medium">Final Output: [batch, seq_len, dim]</p>
+                        <p class="text-xs text-red-700" id="mha-output-shape">[1, 8, 1024] = 8,192 values</p>
+                        <p class="text-xs text-green-600">✅ Same shape as input!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Low-Rank Factorization Explanation -->
+        <div class="mt-8 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border-2 border-indigo-200">
+            <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">🧮 Why Low-Rank Factorization?</h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- MHA Direct Approach -->
+                <div class="bg-white rounded-lg p-4 border border-red-200">
+                    <h4 class="font-semibold text-red-700 mb-3">❌ MHA: Direct Matrix (Inefficient)</h4>
+                    <div class="text-center mb-4">
+                        <svg width="200" height="120" viewBox="0 0 200 120">
+                            <!-- Single large matrix -->
+                            <rect x="20" y="20" width="160" height="80" fill="#EF4444" opacity="0.8" rx="4"/>
+                            <text x="100" y="45" text-anchor="middle" fill="white" font-size="12" font-weight="bold">W_Q</text>
+                            <text x="100" y="65" text-anchor="middle" fill="white" font-size="10" id="mha-matrix-dims">[1024, 1024]</text>
+                            <text x="100" y="80" text-anchor="middle" fill="white" font-size="10" id="mha-matrix-params">1,048,576 params</text>
+                        </svg>
+                    </div>
+                    <div class="bg-red-50 rounded p-3">
+                        <p class="text-xs text-red-700 mb-2"><strong>Matrix Decomposition:</strong> Single matrix</p>
+                        <p class="text-xs text-red-600">• Full rank matrix (rank = min(1024, 1024))</p>
+                        <p class="text-xs text-red-600">• No compression</p>
+                        <p class="text-xs text-red-600">• Maximum parameter count</p>
+                    </div>
+                </div>
+                
+                <!-- MLA Factorized Approach -->
+                <div class="bg-white rounded-lg p-4 border border-purple-200">
+                    <h4 class="font-semibold text-purple-700 mb-3">✅ MLA: Low-Rank Factorization (Efficient)</h4>
+                    <div class="text-center mb-4">
+                        <svg width="280" height="120" viewBox="0 0 280 120">
+                            <!-- First matrix -->
+                            <rect x="10" y="30" width="80" height="60" fill="#8B5CF6" opacity="0.8" rx="4"/>
+                            <text x="50" y="50" text-anchor="middle" fill="white" font-size="10" font-weight="bold">w_dq</text>
+                            <text x="50" y="65" text-anchor="middle" fill="white" font-size="8" id="mla-compress-dims">[1024, 128]</text>
+                            <text x="50" y="75" text-anchor="middle" fill="white" font-size="8" id="mla-compress-params">131k</text>
+                            
+                            <!-- Multiplication symbol -->
+                            <text x="110" y="65" text-anchor="middle" fill="#6B7280" font-size="16" font-weight="bold">×</text>
+                            
+                            <!-- Second matrix -->
+                            <rect x="130" y="20" width="60" height="80" fill="#8B5CF6" opacity="0.8" rx="4"/>
+                            <text x="160" y="45" text-anchor="middle" fill="white" font-size="10" font-weight="bold">w_uq</text>
+                            <text x="160" y="60" text-anchor="middle" fill="white" font-size="8" id="mla-decompress-dims">[128, 1024]</text>
+                            <text x="160" y="70" text-anchor="middle" fill="white" font-size="8" id="mla-decompress-params">131k</text>
+                            
+                            <!-- Equals -->
+                            <text x="210" y="65" text-anchor="middle" fill="#6B7280" font-size="16" font-weight="bold">=</text>
+                            
+                            <!-- Result matrix (dashed) -->
+                            <rect x="230" y="30" width="40" height="60" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="4,2" rx="4"/>
+                            <text x="250" y="55" text-anchor="middle" fill="#8B5CF6" font-size="8" font-weight="bold">Effective</text>
+                            <text x="250" y="65" text-anchor="middle" fill="#8B5CF6" font-size="8">W_Q</text>
+                        </svg>
+                    </div>
+                    <div class="bg-purple-50 rounded p-3">
+                        <p class="text-xs text-purple-700 mb-2"><strong>Low-Rank Factorization:</strong> A × B ≈ W</p>
+                        <p class="text-xs text-purple-600" id="factorization-math">• (1024,128) × (128,1024) = effective (1024,1024)</p>
+                        <p class="text-xs text-purple-600">• Rank = 128 (much lower than 1024)</p>
+                        <p class="text-xs text-green-600" id="param-reduction">• 75% parameter reduction!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mathematical Explanation -->
+            <div class="mt-6 bg-white rounded-lg p-4 border border-indigo-200">
+                <h4 class="font-semibold text-indigo-700 mb-3">📊 The Mathematics</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Traditional Approach:</h5>
+                        <div class="bg-gray-50 rounded p-3 font-mono text-sm">
+                            <p class="text-gray-700">W_Q: (a, b) = (<span id="math-dim-a">1024</span>, <span id="math-dim-b">1024</span>)</p>
+                            <p class="text-gray-700">Parameters: <span id="math-direct-params">1,048,576</span></p>
+                            <p class="text-gray-700">Rank: <span id="math-direct-rank">1024</span> (full rank)</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h5 class="text-sm font-medium text-gray-700 mb-2">Low-Rank Factorization:</h5>
+                        <div class="bg-purple-50 rounded p-3 font-mono text-sm">
+                            <p class="text-purple-700">W₁: (a, r) = (<span id="math-factor-a">1024</span>, <span id="math-factor-r">128</span>)</p>
+                            <p class="text-purple-700">W₂: (r, b) = (<span id="math-factor-r2">128</span>, <span id="math-factor-b">1024</span>)</p>
+                            <p class="text-purple-700">Total params: <span id="math-factor-params">262,144</span></p>
+                            <p class="text-purple-700">Rank: <span id="math-factor-rank">128</span> (low rank)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 bg-green-50 rounded p-3">
+                    <p class="text-sm text-green-700"><strong>Key Insight:</strong> Lower rank 'r' means fewer possible matrices can be perfectly reconstructed, but this constraint actually helps the model learn more efficient representations while dramatically reducing memory usage.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparison Summary -->
+        <div class="mt-8 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-6 text-center">Key Differences</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-2xl">🗜️</span>
+                    </div>
+                    <h4 class="font-medium text-gray-800 mb-2">Compression</h4>
+                    <p class="text-sm text-gray-600">MLA compresses embeddings before QKV computation, reducing memory usage</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-2xl">🔀</span>
+                    </div>
+                    <h4 class="font-medium text-gray-800 mb-2">NoPE/RoPE Split</h4>
+                    <p class="text-sm text-gray-600">MLA separates position-aware and position-agnostic components</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span class="text-2xl">⚡</span>
+                    </div>
+                    <h4 class="font-medium text-gray-800 mb-2">Efficiency</h4>
+                    <p class="text-sm text-gray-600">Shared compressed KV cache reduces memory bandwidth requirements</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="mt-12 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Key Concepts</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-2">Latent Compression</h4>
+                    <p class="text-sm text-gray-600">Reduces computational complexity by compressing embeddings before attention computation</p>
+                </div>
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-2">NoPE vs RoPE</h4>
+                    <p class="text-sm text-gray-600">Separates position-agnostic and position-aware components for better efficiency</p>
+                </div>
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-2">Multi-Head Architecture</h4>
+                    <p class="text-sm text-gray-600">Multiple attention heads capture different types of relationships</p>
+                </div>
+                <div>
+                    <h4 class="font-medium text-gray-700 mb-2">Memory Efficiency</h4>
+                    <p class="text-sm text-gray-600">Shared compressed representations reduce memory usage in KV cache</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentStage = 0;
+        let animationRunning = false;
+        let seqLen = 8;
+        let numHeads = 8;
+        let compressedDim = 128;
+        let originalDim = 1024;
+
+        // Color schemes
+        const colors = {
+            input: '#3B82F6',
+            compressed: '#8B5CF6',
+            q: '#2563EB',
+            k: '#DC2626',
+            v: '#D97706',
+            attention: '#059669',
+            output: '#DC2626'
+        };
+
+        // Initialize the visualization
+        function init() {
+            updateDimensions();
+            drawSideBySideComparison();
+        }
+
+        // Update global variables from controls
+        function updateDimensions() {
+            seqLen = parseInt(document.getElementById('seqLen').value);
+            numHeads = parseInt(document.getElementById('numHeads').value);
+            compressedDim = parseInt(document.getElementById('compressedDim').value);
+            
+            document.getElementById('seqLenValue').textContent = seqLen;
+            document.getElementById('numHeadsValue').textContent = numHeads;
+            document.getElementById('compressedDimValue').textContent = compressedDim;
+            document.getElementById('animSpeedValue').textContent = document.getElementById('animSpeed').value;
+            
+            updateDimensionLabels();
+        }
+
+        // Update dimension labels throughout the interface
+        function updateDimensionLabels() {
+            const headDim = originalDim / numHeads;
+            const inputValues = seqLen * originalDim;
+            const compressedValues = seqLen * compressedDim;
+            
+            // MLA dimensions
+            document.getElementById('mla-input-dims').textContent = `[${seqLen}, ${originalDim}]`;
+            document.getElementById('mla-input-shape').textContent = `[1, ${seqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values`;
+            document.getElementById('mla-q-comp-shape').textContent = `[1, ${seqLen}, ${compressedDim}] = ${compressedValues.toLocaleString()} values`;
+            document.getElementById('mla-kv-comp-shape').textContent = `[1, ${seqLen}, ${compressedDim}] = ${compressedValues.toLocaleString()} values`;
+            
+            // MLA QKV shapes (from your transformer.py)
+            const qNopeValues = seqLen * numHeads * 96; // q_nope_head_dim = 96
+            const qRopeValues = seqLen * numHeads * 32; // q_rope_head_dim = 32
+            const kNopeValues = seqLen * numHeads * 64; // k_nope_head_dim = 64
+            const kRopeValues = seqLen * 1 * 64; // k_rope shared across heads
+            const vValues = seqLen * numHeads * 256; // v_head_dim = 256
+            
+            document.getElementById('mla-q-shape').textContent = `NoPE: [1, ${seqLen}, ${numHeads}, 96] + RoPE: [1, ${seqLen}, ${numHeads}, 32] = ${(qNopeValues + qRopeValues).toLocaleString()} values`;
+            document.getElementById('mla-k-shape').textContent = `NoPE: [1, ${seqLen}, ${numHeads}, 64] + RoPE: [1, ${seqLen}, 1, 64] = ${(kNopeValues + kRopeValues).toLocaleString()} values`;
+            document.getElementById('mla-v-shape').textContent = `[1, ${seqLen}, ${numHeads}, 256] = ${vValues.toLocaleString()} values`;
+            
+            const attnValues = numHeads * seqLen * seqLen;
+            const attnOutputValues = seqLen * numHeads * 256;
+            document.getElementById('mla-attn-shape').textContent = `[1, ${numHeads}, ${seqLen}, ${seqLen}] = ${attnValues.toLocaleString()} values`;
+            document.getElementById('mla-output-dims').textContent = `[${seqLen}, ${originalDim}]`;
+            document.getElementById('mla-output-shape').textContent = `[1, ${seqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values`;
+            
+            // MHA dimensions
+            const mhaQKVValues = seqLen * numHeads * headDim;
+            document.getElementById('mha-input-dims').textContent = `[${seqLen}, ${originalDim}]`;
+            document.getElementById('mha-input-shape').textContent = `[1, ${seqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values`;
+            document.getElementById('mha-q-shape').textContent = `[1, ${seqLen}, ${numHeads}, ${headDim}] = ${mhaQKVValues.toLocaleString()} values`;
+            document.getElementById('mha-k-shape').textContent = `[1, ${seqLen}, ${numHeads}, ${headDim}] = ${mhaQKVValues.toLocaleString()} values`;
+            document.getElementById('mha-v-shape').textContent = `[1, ${seqLen}, ${numHeads}, ${headDim}] = ${mhaQKVValues.toLocaleString()} values`;
+            document.getElementById('mha-attn-shape').textContent = `[1, ${numHeads}, ${seqLen}, ${seqLen}] = ${attnValues.toLocaleString()} values`;
+            document.getElementById('mha-output-dims').textContent = `[${seqLen}, ${originalDim}]`;
+            document.getElementById('mha-output-shape').textContent = `[1, ${seqLen}, ${originalDim}] = ${inputValues.toLocaleString()} values`;
+            
+            // Update compression ratios
+            const compressionRatio = ((inputValues - compressedValues) / inputValues * 100).toFixed(1);
+            document.querySelectorAll('[id$="-comp-shape"]').forEach(el => {
+                if (el.nextElementSibling) {
+                    el.nextElementSibling.textContent = `${compressionRatio}% reduction!`;
+                }
+            });
+            
+            // Update low-rank factorization section
+            updateLowRankFactorization();
+        }
+
+        // Update low-rank factorization calculations
+        function updateLowRankFactorization() {
+            const directParams = originalDim * originalDim;
+            const factorParams1 = originalDim * compressedDim;
+            const factorParams2 = compressedDim * originalDim;
+            const totalFactorParams = factorParams1 + factorParams2;
+            const paramReduction = ((directParams - totalFactorParams) / directParams * 100).toFixed(1);
+            
+            // Update MHA direct matrix
+            document.getElementById('mha-matrix-dims').textContent = `[${originalDim}, ${originalDim}]`;
+            document.getElementById('mha-matrix-params').textContent = `${directParams.toLocaleString()} params`;
+            
+            // Update MLA factorized matrices
+            document.getElementById('mla-compress-dims').textContent = `[${originalDim}, ${compressedDim}]`;
+            document.getElementById('mla-compress-params').textContent = `${(factorParams1/1000).toFixed(0)}k`;
+            document.getElementById('mla-decompress-dims').textContent = `[${compressedDim}, ${originalDim}]`;
+            document.getElementById('mla-decompress-params').textContent = `${(factorParams2/1000).toFixed(0)}k`;
+            
+            // Update mathematical breakdown
+            document.getElementById('math-dim-a').textContent = originalDim;
+            document.getElementById('math-dim-b').textContent = originalDim;
+            document.getElementById('math-direct-params').textContent = directParams.toLocaleString();
+            document.getElementById('math-direct-rank').textContent = originalDim;
+            
+            document.getElementById('math-factor-a').textContent = originalDim;
+            document.getElementById('math-factor-r').textContent = compressedDim;
+            document.getElementById('math-factor-r2').textContent = compressedDim;
+            document.getElementById('math-factor-b').textContent = originalDim;
+            document.getElementById('math-factor-params').textContent = totalFactorParams.toLocaleString();
+            document.getElementById('math-factor-rank').textContent = compressedDim;
+            
+            // Update factorization math
+            document.getElementById('factorization-math').textContent = `• (${originalDim},${compressedDim}) × (${compressedDim},${originalDim}) = effective (${originalDim},${originalDim})`;
+            document.getElementById('param-reduction').textContent = `• ${paramReduction}% parameter reduction!`;
+        }
+
+        // Draw side-by-side comparison
+        function drawSideBySideComparison() {
+            // Draw MLA side
+            drawEmbedding('#mla-input', colors.input);
+            drawCompression('#mla-q-comp', colors.compressed);
+            drawCompression('#mla-kv-comp', colors.compressed);
+            drawSplit('#mla-q-split', [colors.q, colors.q]);
+            drawSplit('#mla-k-split', [colors.k, colors.k]);
+            drawSplit('#mla-v-split', [colors.v]);
+            drawAttention('#mla-attention', colors.attention);
+            drawEmbedding('#mla-output', colors.output);
+            
+            // Draw MHA side
+            drawEmbedding('#mha-input', colors.input);
+            drawProjection('#mha-q-proj', colors.q);
+            drawProjection('#mha-k-proj', colors.k);
+            drawProjection('#mha-v-proj', colors.v);
+            drawProjection('#mha-q-rope', colors.q);
+            drawProjection('#mha-k-rope', colors.k);
+            drawProjection('#mha-v-unchanged', colors.v);
+            drawAttention('#mha-attention', colors.attention);
+            drawEmbedding('#mha-output', colors.output);
+        }
+
+        function drawEmbedding(selector, color) {
+            const svg = d3.select(selector);
+            svg.selectAll('*').remove();
+            
+            const width = 400;
+            const height = 120;
+            const cellWidth = width / seqLen;
+            const cellHeight = 60;
+            
+            const g = svg.append('g')
+                .attr('transform', `translate(0, ${(height - cellHeight) / 2})`);
+            
+            for (let i = 0; i < seqLen; i++) {
+                g.append('rect')
+                    .attr('class', 'matrix-cell')
+                    .attr('x', i * cellWidth + 2)
+                    .attr('y', 0)
+                    .attr('width', cellWidth - 4)
+                    .attr('height', cellHeight)
+                    .attr('fill', color)
+                    .attr('opacity', 0.8)
+                    .attr('rx', 4);
+                
+                g.append('text')
+                    .attr('x', i * cellWidth + cellWidth / 2)
+                    .attr('y', cellHeight / 2)
+                    .attr('text-anchor', 'middle')
+                    .attr('dominant-baseline', 'middle')
+                    .attr('fill', 'white')
+                    .attr('font-size', '12px')
+                    .attr('font-weight', 'bold')
+                    .text(`T${i + 1}`);
+            }
+        }
+
+        function drawCompression(selector, color) {
+            const svg = d3.select(selector);
+            svg.selectAll('*').remove();
+            
+            const width = 180;
+            const height = 80;
+            
+            // Input
+            svg.append('rect')
+                .attr('x', 15)
+                .attr('y', 20)
+                .attr('width', 50)
+                .attr('height', 40)
+                .attr('fill', colors.input)
+                .attr('opacity', 0.8)
+                .attr('rx', 4);
+            
+            svg.append('text')
+                .attr('x', 40)
+                .attr('y', 45)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-size', '10px')
+                .text('1024');
+            
+            // Arrow
+            svg.append('line')
+                .attr('x1', 70)
+                .attr('y1', 40)
+                .attr('x2', 100)
+                .attr('y2', 40)
+                .attr('stroke', '#8B5CF6')
+                .attr('stroke-width', 2);
+            
+            // Compressed
+            svg.append('rect')
+                .attr('x', 110)
+                .attr('y', 25)
+                .attr('width', 40)
+                .attr('height', 30)
+                .attr('fill', color)
+                .attr('opacity', 0.8)
+                .attr('rx', 4);
+            
+            svg.append('text')
+                .attr('x', 130)
+                .attr('y', 45)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-size', '10px')
+                .text('128');
+        }
+
+        function drawSplit(selector, colors) {
+            const svg = d3.select(selector);
+            svg.selectAll('*').remove();
+            
+            const width = 200;
+            const height = 25;
+            const numParts = colors.length;
+            const partWidth = width / numParts;
+            
+            for (let i = 0; i < numParts; i++) {
+                svg.append('rect')
+                    .attr('x', i * partWidth + 2)
+                    .attr('y', 2)
+                    .attr('width', partWidth - 4)
+                    .attr('height', 21)
+                    .attr('fill', colors[i])
+                    .attr('opacity', 0.8)
+                    .attr('rx', 2);
+                
+                const label = numParts === 2 ? (i === 0 ? 'NoPE' : 'RoPE') : 'Value';
+                svg.append('text')
+                    .attr('x', i * partWidth + partWidth / 2)
+                    .attr('y', 15)
+                    .attr('text-anchor', 'middle')
+                    .attr('fill', 'white')
+                    .attr('font-size', '9px')
+                    .text(label);
+            }
+        }
+
+        function drawProjection(selector, color) {
+            const svg = d3.select(selector);
+            svg.selectAll('*').remove();
+            
+            const width = 200;
+            const height = 25;
+            
+            svg.append('rect')
+                .attr('x', 10)
+                .attr('y', 2)
+                .attr('width', width - 20)
+                .attr('height', 21)
+                .attr('fill', color)
+                .attr('opacity', 0.8)
+                .attr('rx', 2);
+            
+            svg.append('text')
+                .attr('x', width / 2)
+                .attr('y', 15)
+                .attr('text-anchor', 'middle')
+                .attr('fill', 'white')
+                .attr('font-size', '9px')
+                .text(`${numHeads} heads`);
+        }
+
+        function drawAttention(selector, color) {
+            const svg = d3.select(selector);
+            svg.selectAll('*').remove();
+            
+            const width = 400;
+            const height = 120;
+            const matrixSize = Math.min(seqLen, 8);
+            const cellSize = Math.min(width / matrixSize, height / matrixSize) * 0.6;
+            
+            const g = svg.append('g')
+                .attr('transform', `translate(${(width - cellSize * matrixSize) / 2}, ${(height - cellSize * matrixSize) / 2})`);
+            
+            for (let i = 0; i < matrixSize; i++) {
+                for (let j = 0; j < matrixSize; j++) {
+                    const attention = Math.random() * 0.8 + 0.2;
+                    g.append('rect')
+                        .attr('x', j * cellSize)
+                        .attr('y', i * cellSize)
+                        .attr('width', cellSize - 1)
+                        .attr('height', cellSize - 1)
+                        .attr('fill', color)
+                        .attr('opacity', attention)
+                        .attr('rx', 1);
+                }
+            }
+        }
+
+        // Animation functions
+        function playAnimation() {
+            if (animationRunning) return;
+            animationRunning = true;
+            currentStage = 0;
+            
+            const speed = parseInt(document.getElementById('animSpeed').value);
+            const delay = 1200 - (speed * 100);
+            
+            // Reset all stages
+            document.querySelectorAll('.stage-container').forEach(stage => {
+                stage.classList.remove('active');
+            });
+            
+            animateStage();
+            
+            function animateStage() {
+                if (currentStage < 5) {
+                    // Animate both MLA and MHA stages simultaneously
+                    document.getElementById(`mla-stage${currentStage + 1}`).classList.add('active');
+                    document.getElementById(`mha-stage${currentStage + 1}`).classList.add('active');
+                    
+                    // Animate flow arrows
+                    if (currentStage < 4) {
+                        document.getElementById(`mla-arrow${currentStage + 1}`).style.animation = 'flow 1s ease-in-out';
+                        document.getElementById(`mha-arrow${currentStage + 1}`).style.animation = 'flow 1s ease-in-out';
+                    }
+                    
+                    setTimeout(() => {
+                        if (currentStage < 4) {
+                            document.getElementById(`mla-stage${currentStage + 1}`).classList.remove('active');
+                            document.getElementById(`mha-stage${currentStage + 1}`).classList.remove('active');
+                            document.getElementById(`mla-arrow${currentStage + 1}`).style.animation = '';
+                            document.getElementById(`mha-arrow${currentStage + 1}`).style.animation = '';
+                        }
+                        currentStage++;
+                        animateStage();
+                    }, delay);
+                } else {
+                    animationRunning = false;
+                }
+            }
+        }
+
+        function resetAnimation() {
+            animationRunning = false;
+            currentStage = 0;
+            document.querySelectorAll('.stage-container').forEach(stage => {
+                stage.classList.remove('active');
+            });
+            // Reset arrow animations
+            document.querySelectorAll('.flow-arrow').forEach(arrow => {
+                arrow.style.animation = '';
+            });
+        }
+
+        // Event listeners
+        document.getElementById('seqLen').addEventListener('input', () => {
+            updateDimensions();
+            init();
+        });
+
+        document.getElementById('numHeads').addEventListener('input', () => {
+            updateDimensions();
+            init();
+        });
+
+        document.getElementById('compressedDim').addEventListener('input', () => {
+            updateDimensions();
+            init();
+        });
+
+        document.getElementById('animSpeed').addEventListener('input', updateDimensions);
+
+        document.getElementById('playAnimation').addEventListener('click', playAnimation);
+        document.getElementById('resetAnimation').addEventListener('click', resetAnimation);
+
+        // Initialize the visualization
+        init();
+    </script>
+</body>
+</html>
