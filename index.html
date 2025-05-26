@@ -17,11 +17,7 @@
             transform: scale(1.1);
         }
         .flow-arrow {
-            animation: flow 2s ease-in-out infinite;
-        }
-        @keyframes flow {
-            0%, 100% { opacity: 0.6; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.1); }
+            /* Static arrows - no animation */
         }
         .stage-container {
             transition: all 0.5s ease;
@@ -173,13 +169,32 @@
                 
                 <!-- MLA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow1">
+                    <svg class="flow-arrow" width="140" height="60" id="mla-arrow1">
                         <defs>
                             <marker id="mla-arrowhead1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
                                 <polygon points="0 0, 8 3, 0 6" fill="#8B5CF6" />
                             </marker>
                         </defs>
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        <!-- Input matrix representation -->
+                        <rect x="10" y="20" width="30" height="15" fill="#3B82F6" opacity="0.7" rx="2"/>
+                        <text x="25" y="30" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Input</text>
+                        <text x="25" y="42" text-anchor="middle" fill="#374151" font-size="5" id="mla-arrow1-dims">[seq, 1024]</text>
+                        
+                        <!-- Arrow to compression -->
+                        <line x1="45" y1="27" x2="70" y2="27" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        <text x="57" y="20" text-anchor="middle" fill="#8B5CF6" font-size="6">compress</text>
+                        
+                        <!-- Result: compressed representations -->
+                        <rect x="75" y="10" width="25" height="12" fill="#8B5CF6" opacity="0.7" rx="2"/>
+                        <text x="87" y="18" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q_c</text>
+                        <text x="87" y="30" text-anchor="middle" fill="#374151" font-size="4">[seq, 128]</text>
+                        
+                        <rect x="75" y="32" width="25" height="12" fill="#8B5CF6" opacity="0.7" rx="2"/>
+                        <text x="87" y="40" text-anchor="middle" fill="white" font-size="6" font-weight="bold">KV_c</text>
+                        <text x="87" y="50" text-anchor="middle" fill="#374151" font-size="4">[seq, 128]</text>
+                        
+                        <!-- Arrow continues -->
+                        <line x1="105" y1="27" x2="125" y2="27" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
                     </svg>
                 </div>
                 
@@ -215,8 +230,40 @@
                 
                 <!-- MLA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow2">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    <svg class="flow-arrow" width="160" height="60" id="mla-arrow2">
+                        <!-- Start with compressed representations (from previous arrow) -->
+                        <rect x="5" y="15" width="25" height="12" fill="#8B5CF6" opacity="0.7" rx="2"/>
+                        <text x="17" y="23" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q_c</text>
+                        <text x="17" y="35" text-anchor="middle" fill="#374151" font-size="4" id="mla-arrow2-q-dims">[seq, 128]</text>
+                        
+                        <rect x="5" y="40" width="25" height="12" fill="#8B5CF6" opacity="0.7" rx="2"/>
+                        <text x="17" y="48" text-anchor="middle" fill="white" font-size="6" font-weight="bold">KV_c</text>
+                        <text x="17" y="58" text-anchor="middle" fill="#374151" font-size="4" id="mla-arrow2-kv-dims">[seq, 128]</text>
+                        
+                        <!-- Arrow through upsampling -->
+                        <line x1="35" y1="35" x2="60" y2="35" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        <text x="47" y="25" text-anchor="middle" fill="#8B5CF6" font-size="6">upsample</text>
+                        
+                        <!-- Upsampling matrices -->
+                        <rect x="65" y="8" width="20" height="10" fill="#2563EB" opacity="0.8" rx="2"/>
+                        <text x="75" y="15" text-anchor="middle" fill="white" font-size="5" font-weight="bold">W_uq</text>
+                        
+                        <rect x="65" y="25" width="20" height="10" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="75" y="32" text-anchor="middle" fill="white" font-size="5" font-weight="bold">W_uk</text>
+                        
+                        <rect x="65" y="42" width="20" height="10" fill="#D97706" opacity="0.8" rx="2"/>
+                        <text x="75" y="49" text-anchor="middle" fill="white" font-size="5" font-weight="bold">W_uv</text>
+                        
+                        <!-- Arrow to final QKV -->
+                        <line x1="90" y1="30" x2="115" y2="30" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        
+                        <!-- Final QKV outputs -->
+                        <rect x="120" y="15" width="20" height="10" fill="#2563EB" opacity="0.7" rx="2"/>
+                        <text x="130" y="22" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q</text>
+                        <rect x="120" y="30" width="20" height="10" fill="#DC2626" opacity="0.7" rx="2"/>
+                        <text x="130" y="37" text-anchor="middle" fill="white" font-size="6" font-weight="bold">K</text>
+                        <rect x="120" y="45" width="20" height="10" fill="#D97706" opacity="0.7" rx="2"/>
+                        <text x="130" y="52" text-anchor="middle" fill="white" font-size="6" font-weight="bold">V</text>
                     </svg>
                 </div>
                 
@@ -319,8 +366,43 @@
                 
                 <!-- MLA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow3">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    <svg class="flow-arrow" width="200" height="70" id="mla-arrow3">
+                        <!-- Q with NoPE/RoPE split -->
+                        <rect x="5" y="5" width="30" height="10" fill="#2563EB" opacity="0.7" rx="2"/>
+                        <text x="20" y="12" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q_NoPE</text>
+                        <rect x="5" y="17" width="30" height="10" fill="#2563EB" opacity="0.9" rx="2"/>
+                        <text x="20" y="24" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q_RoPE</text>
+                        
+                        <!-- K with NoPE/RoPE split -->
+                        <rect x="5" y="32" width="30" height="10" fill="#DC2626" opacity="0.7" rx="2"/>
+                        <text x="20" y="39" text-anchor="middle" fill="white" font-size="6" font-weight="bold">K_NoPE</text>
+                        <rect x="5" y="44" width="30" height="10" fill="#DC2626" opacity="0.9" rx="2"/>
+                        <text x="20" y="51" text-anchor="middle" fill="white" font-size="6" font-weight="bold">K_RoPE</text>
+                        
+                        <!-- V (no split) -->
+                        <rect x="5" y="57" width="30" height="10" fill="#D97706" opacity="0.7" rx="2"/>
+                        <text x="20" y="64" text-anchor="middle" fill="white" font-size="6" font-weight="bold">V</text>
+                        
+                        <!-- Arrow to combination -->
+                        <line x1="40" y1="35" x2="65" y2="35" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        
+                        <!-- Combined Q+RoPE, K+RoPE -->
+                        <rect x="70" y="15" width="35" height="12" fill="#2563EB" opacity="0.8" rx="2"/>
+                        <text x="87" y="23" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Q+RoPE</text>
+                        
+                        <rect x="70" y="35" width="35" height="12" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="87" y="43" text-anchor="middle" fill="white" font-size="7" font-weight="bold">K+RoPE</text>
+                        
+                        <!-- Attention computation -->
+                        <line x1="110" y1="30" x2="135" y2="30" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        <text x="122" y="22" text-anchor="middle" fill="#8B5CF6" font-size="7" font-weight="bold">QK^T</text>
+                        
+                        <rect x="140" y="20" width="35" height="20" fill="#059669" opacity="0.7" rx="2"/>
+                        <text x="157" y="32" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Attention</text>
+                        <text x="157" y="50" text-anchor="middle" fill="#374151" font-size="5" id="mla-arrow3-attn-dims">[B,H,seq,seq]</text>
+                        
+                        <!-- Final output -->
+                        <line x1="180" y1="30" x2="195" y2="30" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
                     </svg>
                 </div>
                 
@@ -340,8 +422,25 @@
                 
                 <!-- MLA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mla-arrow4">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                    <svg class="flow-arrow" width="160" height="50" id="mla-arrow4">
+                        <!-- Attention output -->
+                        <rect x="10" y="15" width="40" height="15" fill="#059669" opacity="0.7" rx="2"/>
+                        <text x="30" y="25" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Attn Out</text>
+                        <text x="30" y="38" text-anchor="middle" fill="#374151" font-size="5" id="mla-arrow4-attn-dims">[B,H,seq,256]</text>
+                        
+                        <!-- Output projection -->
+                        <line x1="55" y1="22" x2="80" y2="22" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        
+                        <rect x="85" y="12" width="25" height="15" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="97" y="21" text-anchor="middle" fill="white" font-size="7" font-weight="bold">W_o</text>
+                        <text x="97" y="32" text-anchor="middle" fill="#374151" font-size="5">[H×256→1024]</text>
+                        
+                        <!-- Final output -->
+                        <line x1="115" y1="19" x2="140" y2="19" stroke="#8B5CF6" stroke-width="2" marker-end="url(#mla-arrowhead1)" />
+                        
+                        <rect x="145" y="15" width="25" height="15" fill="#3B82F6" opacity="0.7" rx="2"/>
+                        <text x="157" y="25" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Output</text>
+                        <text x="157" y="38" text-anchor="middle" fill="#374151" font-size="5" id="mla-arrow4-out-dims">[seq, 1024]</text>
                     </svg>
                 </div>
                 
@@ -384,13 +483,43 @@
                 
                 <!-- MHA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow1">
+                    <svg class="flow-arrow" width="160" height="90" id="mha-arrow1">
                         <defs>
                             <marker id="mha-arrowhead1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
                                 <polygon points="0 0, 8 3, 0 6" fill="#3B82F6" />
                             </marker>
                         </defs>
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        <!-- Input matrix -->
+                        <rect x="10" y="35" width="30" height="20" fill="#3B82F6" opacity="0.7" rx="2"/>
+                        <text x="25" y="48" text-anchor="middle" fill="white" font-size="8" font-weight="bold">Input</text>
+                        <text x="25" y="62" text-anchor="middle" fill="#374151" font-size="6" id="mha-arrow1-dims">[seq, 1024]</text>
+                        
+                        <!-- Arrow -->
+                        <line x1="45" y1="45" x2="70" y2="45" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        
+                        <!-- Direct projection matrices -->
+                        <rect x="75" y="10" width="25" height="15" fill="#2563EB" opacity="0.8" rx="2"/>
+                        <text x="87" y="19" text-anchor="middle" fill="white" font-size="7" font-weight="bold">W_Q</text>
+                        <text x="87" y="30" text-anchor="middle" fill="#374151" font-size="5">[1024→1024]</text>
+                        
+                        <rect x="75" y="30" width="25" height="15" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="87" y="39" text-anchor="middle" fill="white" font-size="7" font-weight="bold">W_K</text>
+                        <text x="87" y="50" text-anchor="middle" fill="#374151" font-size="5">[1024→1024]</text>
+                        
+                        <rect x="75" y="50" width="25" height="15" fill="#D97706" opacity="0.8" rx="2"/>
+                        <text x="87" y="59" text-anchor="middle" fill="white" font-size="7" font-weight="bold">W_V</text>
+                        <text x="87" y="70" text-anchor="middle" fill="#374151" font-size="5">[1024→1024]</text>
+                        
+                        <!-- Arrow to output -->
+                        <line x1="105" y1="40" x2="125" y2="40" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        
+                        <!-- Output QKV -->
+                        <rect x="130" y="20" width="25" height="12" fill="#2563EB" opacity="0.7" rx="2"/>
+                        <text x="142" y="28" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q</text>
+                        <rect x="130" y="35" width="25" height="12" fill="#DC2626" opacity="0.7" rx="2"/>
+                        <text x="142" y="43" text-anchor="middle" fill="white" font-size="6" font-weight="bold">K</text>
+                        <rect x="130" y="50" width="25" height="12" fill="#D97706" opacity="0.7" rx="2"/>
+                        <text x="142" y="58" text-anchor="middle" fill="white" font-size="6" font-weight="bold">V</text>
                     </svg>
                 </div>
                 
@@ -497,55 +626,100 @@
                 
                 <!-- MHA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow2">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    <svg class="flow-arrow" width="160" height="50" id="mha-arrow2">
+                        <!-- QKV matrices from previous stage -->
+                        <rect x="10" y="10" width="25" height="10" fill="#2563EB" opacity="0.7" rx="2"/>
+                        <text x="22" y="17" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Q</text>
+                        <text x="22" y="28" text-anchor="middle" fill="#374151" font-size="4" id="mha-arrow2-q-dims">[B,H,seq,128]</text>
+                        
+                        <rect x="10" y="22" width="25" height="10" fill="#DC2626" opacity="0.7" rx="2"/>
+                        <text x="22" y="29" text-anchor="middle" fill="white" font-size="6" font-weight="bold">K</text>
+                        <text x="22" y="40" text-anchor="middle" fill="#374151" font-size="4" id="mha-arrow2-k-dims">[B,H,seq,128]</text>
+                        
+                        <rect x="10" y="34" width="25" height="10" fill="#D97706" opacity="0.7" rx="2"/>
+                        <text x="22" y="41" text-anchor="middle" fill="white" font-size="6" font-weight="bold">V</text>
+                        <text x="22" y="52" text-anchor="middle" fill="#374151" font-size="4" id="mha-arrow2-v-dims">[B,H,seq,128]</text>
+                        
+                        <!-- Arrow to attention computation -->
+                        <line x1="40" y1="27" x2="65" y2="27" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        <text x="52" y="18" text-anchor="middle" fill="#3B82F6" font-size="6">compute</text>
+                        
+                        <!-- Attention computation steps -->
+                        <rect x="70" y="8" width="25" height="10" fill="#059669" opacity="0.8" rx="2"/>
+                        <text x="82" y="15" text-anchor="middle" fill="white" font-size="5" font-weight="bold">QK^T</text>
+                        
+                        <rect x="70" y="20" width="25" height="10" fill="#059669" opacity="0.8" rx="2"/>
+                        <text x="82" y="27" text-anchor="middle" fill="white" font-size="5" font-weight="bold">softmax</text>
+                        
+                        <rect x="70" y="32" width="25" height="10" fill="#059669" opacity="0.8" rx="2"/>
+                        <text x="82" y="39" text-anchor="middle" fill="white" font-size="5" font-weight="bold">×V</text>
+                        
+                        <!-- Arrow to output -->
+                        <line x1="100" y1="25" x2="125" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        
+                        <!-- Attention output -->
+                        <rect x="130" y="15" width="25" height="15" fill="#059669" opacity="0.7" rx="2"/>
+                        <text x="142" y="25" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Attn Out</text>
+                        <text x="142" y="35" text-anchor="middle" fill="#374151" font-size="4" id="mha-arrow2-attn-dims">[B,H,seq,seq]</text>
                     </svg>
                 </div>
                 
-                <!-- MHA Stage 3: RoPE -->
+                <!-- MHA Stage 3: Attention Computation -->
                 <div class="stage-container bg-white rounded-lg shadow p-4" id="mha-stage3">
                     <div class="flex items-center mb-3">
                         <div class="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm mr-2">3</div>
-                        <h3 class="font-semibold text-gray-800">Rotary Position Encoding</h3>
+                        <h3 class="font-semibold text-gray-800">🎯 Attention Computation</h3>
                     </div>
                     <div class="space-y-3">
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-blue-600 font-medium">Q + RoPE (full tensor)</span>
-                                <svg id="mha-q-rope" width="150" height="25" viewBox="0 0 200 25"></svg>
+                                <span class="text-xs text-blue-600 font-medium">Q matrices (ready for attention)</span>
+                                <svg id="mha-q-ready" width="150" height="25" viewBox="0 0 200 25"></svg>
                             </div>
                             <div class="bg-blue-50 rounded p-1">
-                                <p class="text-xs text-blue-700">RoPE applied to all [1, 8, 8, 128] = 8,192 values</p>
+                                <p class="text-xs text-blue-700" id="mha-q-ready-shape">[1, 8, 8, 128] = 8,192 values</p>
                             </div>
                         </div>
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-red-600 font-medium">K + RoPE (full tensor)</span>
-                                <svg id="mha-k-rope" width="150" height="25" viewBox="0 0 200 25"></svg>
+                                <span class="text-xs text-red-600 font-medium">K matrices (ready for attention)</span>
+                                <svg id="mha-k-ready" width="150" height="25" viewBox="0 0 200 25"></svg>
                             </div>
                             <div class="bg-red-50 rounded p-1">
-                                <p class="text-xs text-red-700">RoPE applied to all [1, 8, 8, 128] = 8,192 values</p>
+                                <p class="text-xs text-red-700" id="mha-k-ready-shape">[1, 8, 8, 128] = 8,192 values</p>
                             </div>
                         </div>
                         <div>
                             <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs text-orange-600 font-medium">V (unchanged)</span>
-                                <svg id="mha-v-unchanged" width="150" height="25" viewBox="0 0 200 25"></svg>
+                                <span class="text-xs text-orange-600 font-medium">V matrices (unchanged)</span>
+                                <svg id="mha-v-ready" width="150" height="25" viewBox="0 0 200 25"></svg>
                             </div>
                             <div class="bg-orange-50 rounded p-1">
-                                <p class="text-xs text-orange-700">No position encoding: [1, 8, 8, 128] = 8,192 values</p>
+                                <p class="text-xs text-orange-700" id="mha-v-ready-shape">[1, 8, 8, 128] = 8,192 values</p>
                             </div>
                         </div>
                     </div>
-                    <div class="bg-yellow-50 rounded p-2 mt-3">
-                        <p class="text-xs text-yellow-700 font-medium">🔄 RoPE: Full tensor rotation (vs MLA's split approach)</p>
+                    <div class="bg-blue-50 rounded p-2 mt-3">
+                        <p class="text-xs text-blue-700 font-medium">📍 Position info already in embeddings (traditional approach)</p>
+                        <p class="text-xs text-blue-600">Unlike MLA's NoPE/RoPE split, MHA uses uniform Q,K,V with pre-added positions</p>
                     </div>
                 </div>
                 
                 <!-- MHA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow3">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    <svg class="flow-arrow" width="120" height="40" id="mha-arrow3">
+                        <!-- Attention output from previous stage -->
+                        <rect x="10" y="10" width="30" height="15" fill="#059669" opacity="0.7" rx="2"/>
+                        <text x="25" y="20" text-anchor="middle" fill="white" font-size="6" font-weight="bold">Attn Out</text>
+                        <text x="25" y="32" text-anchor="middle" fill="#374151" font-size="4">[B,H,seq,128]</text>
+                        
+                        <!-- Arrow to output projection -->
+                        <line x1="45" y1="17" x2="70" y2="17" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        <text x="57" y="12" text-anchor="middle" fill="#3B82F6" font-size="5">project</text>
+                        
+                        <!-- Output projection -->
+                        <rect x="75" y="10" width="20" height="15" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="85" y="20" text-anchor="middle" fill="white" font-size="6" font-weight="bold">W_o</text>
                     </svg>
                 </div>
                 
@@ -565,8 +739,25 @@
                 
                 <!-- MHA Flow Arrow -->
                 <div class="flex justify-center">
-                    <svg class="flow-arrow" width="40" height="30" id="mha-arrow4">
-                        <line x1="20" y1="5" x2="20" y2="25" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                    <svg class="flow-arrow" width="160" height="50" id="mha-arrow4">
+                        <!-- Attention output -->
+                        <rect x="10" y="15" width="40" height="15" fill="#059669" opacity="0.7" rx="2"/>
+                        <text x="30" y="25" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Attn Out</text>
+                        <text x="30" y="38" text-anchor="middle" fill="#374151" font-size="5" id="mha-arrow4-attn-dims">[B,H,seq,128]</text>
+                        
+                        <!-- Output projection -->
+                        <line x1="55" y1="22" x2="80" y2="22" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        
+                        <rect x="85" y="12" width="25" height="15" fill="#DC2626" opacity="0.8" rx="2"/>
+                        <text x="97" y="21" text-anchor="middle" fill="white" font-size="7" font-weight="bold">W_o</text>
+                        <text x="97" y="32" text-anchor="middle" fill="#374151" font-size="5">[H×128→1024]</text>
+                        
+                        <!-- Final output -->
+                        <line x1="115" y1="19" x2="140" y2="19" stroke="#3B82F6" stroke-width="2" marker-end="url(#mha-arrowhead1)" />
+                        
+                        <rect x="145" y="15" width="25" height="15" fill="#3B82F6" opacity="0.7" rx="2"/>
+                        <text x="157" y="25" text-anchor="middle" fill="white" font-size="7" font-weight="bold">Output</text>
+                        <text x="157" y="38" text-anchor="middle" fill="#374151" font-size="5" id="mha-arrow4-out-dims">[seq, 1024]</text>
                     </svg>
                 </div>
                 
@@ -958,6 +1149,9 @@
             
             // Update low-rank factorization section
             updateLowRankFactorization();
+            
+            // Update arrow dimensions
+            updateArrowDimensions();
         }
 
         // Update low-rank factorization calculations
@@ -994,6 +1188,39 @@
             // Update factorization math
             document.getElementById('factorization-math').textContent = `• (${originalDim},${compressedDim}) × (${compressedDim},${originalDim}) = effective (${originalDim},${originalDim})`;
             document.getElementById('param-reduction').textContent = `• ${paramReduction}% parameter reduction!`;
+        }
+
+        // Update arrow dimension labels
+        function updateArrowDimensions() {
+            const headDim = originalDim / numHeads;
+            
+            // Helper function to safely update element if it exists
+            function safeUpdate(id, text) {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.textContent = text;
+                }
+            }
+            
+            // MLA arrow dimensions (only update elements that exist)
+            safeUpdate('mla-arrow1-dims', `[${seqLen}, ${originalDim}]`);
+            safeUpdate('mla-arrow2-q-dims', `[${seqLen}, ${compressedDim}]`);
+            safeUpdate('mla-arrow2-kv-dims', `[${seqLen}, ${compressedDim}]`);
+            safeUpdate('mla-arrow3-attn-dims', `[1,${numHeads},${seqLen},${seqLen}]`);
+            safeUpdate('mla-arrow4-attn-dims', `[1,${numHeads},${seqLen},256]`);
+            safeUpdate('mla-arrow4-out-dims', `[${seqLen}, ${originalDim}]`);
+            
+            // MHA arrow dimensions (only update elements that exist)
+            safeUpdate('mha-arrow1-dims', `[${seqLen}, ${originalDim}]`);
+            safeUpdate('mha-arrow2-q-dims', `[1,${numHeads},${seqLen},${headDim}]`);
+            safeUpdate('mha-arrow2-k-dims', `[1,${numHeads},${seqLen},${headDim}]`);
+            safeUpdate('mha-arrow2-v-dims', `[1,${numHeads},${seqLen},${headDim}]`);
+            safeUpdate('mha-arrow2-attn-dims', `[1,${numHeads},${seqLen},${seqLen}]`);
+            
+            // MHA Stage 3 - ready matrices
+            safeUpdate('mha-q-ready-shape', `[1, ${numHeads}, ${seqLen}, ${headDim}] = ${(seqLen * numHeads * headDim).toLocaleString()} values`);
+            safeUpdate('mha-k-ready-shape', `[1, ${numHeads}, ${seqLen}, ${headDim}] = ${(seqLen * numHeads * headDim).toLocaleString()} values`);
+            safeUpdate('mha-v-ready-shape', `[1, ${numHeads}, ${seqLen}, ${headDim}] = ${(seqLen * numHeads * headDim).toLocaleString()} values`);
         }
 
         // Run real comparison using backend
@@ -1502,18 +1729,12 @@
                     document.getElementById(`mla-stage${currentStage + 1}`).classList.add('active');
                     document.getElementById(`mha-stage${currentStage + 1}`).classList.add('active');
                     
-                    // Animate flow arrows
-                    if (currentStage < 4) {
-                        document.getElementById(`mla-arrow${currentStage + 1}`).style.animation = 'flow 1s ease-in-out';
-                        document.getElementById(`mha-arrow${currentStage + 1}`).style.animation = 'flow 1s ease-in-out';
-                    }
+                    // Arrows are now static - no animation needed
                     
                     setTimeout(() => {
                         if (currentStage < 4) {
                             document.getElementById(`mla-stage${currentStage + 1}`).classList.remove('active');
                             document.getElementById(`mha-stage${currentStage + 1}`).classList.remove('active');
-                            document.getElementById(`mla-arrow${currentStage + 1}`).style.animation = '';
-                            document.getElementById(`mha-arrow${currentStage + 1}`).style.animation = '';
                         }
                         currentStage++;
                         animateStage();
@@ -1530,10 +1751,7 @@
             document.querySelectorAll('.stage-container').forEach(stage => {
                 stage.classList.remove('active');
             });
-            // Reset arrow animations
-            document.querySelectorAll('.flow-arrow').forEach(arrow => {
-                arrow.style.animation = '';
-            });
+            // Arrows are now static - no reset needed
         }
 
         // Event listeners
